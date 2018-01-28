@@ -15,33 +15,23 @@ def epsilon_greedy(state, Q, epsilon):
   else:
     return greedy_action
 
-def moving_average(arr, M):
-  result = np.zeros(len(arr)-M+1)
-
-  for i in range(len(result)):
-    result[i] = np.mean(arr[i:i+M])
-
-  return result
-
 env = gym.make("FrozenLake-v0")
 
 # parameters for TD(lambda)
 episodes = 10000
 gamma = 1.0
 alpha = 0.1
-epsilon = 0.05
-eligibility_decay = 0.5
+epsilon = 0.1
+eligibility_decay = 0.3
 
 n_states = env.observation_space.n
 n_actions = env.action_space.n
 
 Q = np.zeros((n_states, n_actions))
 
-all_returns = []
+average_returns = []
 
 for episode in range(episodes):
-
-  epsilon = 1 - episode / episodes;
 
   state = env.reset()
   action = epsilon_greedy(state, Q, epsilon)
@@ -77,8 +67,9 @@ for episode in range(episodes):
     G[t] = R[t+1] + gamma * G[t+1]
     t = t - 1
 
-  all_returns = all_returns + list(G)
+  average_returns.append(np.mean(G))
 
-moving_average_returns = 100 * moving_average(all_returns, M=100)
-plt.plot(moving_average_returns)
+plt.plot(np.cumsum(average_returns),linewidth=2)
+plt.xlabel("Numer of episodes")
+plt.ylabel("Cummulative mean reward over each episode")
 plt.show()
