@@ -6,38 +6,46 @@ import matplotlib.pyplot as plt
 
 def epsilon_greedy(state, Q, epsilon):
 
-  actions_values = Q[state,:]
-  greedy_action = np.argmax(actions_values)
+  values = Q[state,:]
+  max_value = max(values)
+  no_actions = len(values)
+
+  greedy_actions = [a for a in range(no_actions) if values[a] == max_value]
+
   explore = (random() < epsilon)
 
   if explore:
-    return choice([a for a in range(len(actions_values))])
+    return choice([a for a in range(no_actions)])
   else:
-    return greedy_action
+    return choice([a for a in greedy_actions])
+
 
 env = gym.make("FrozenLake-v0")
 
-# parameters for TD(lambda)
+
+# parameters for sarsa(lambda)
 episodes = 10000
 gamma = 1.0
 alpha = 0.1
-epsilon = 0.1
+epsilon = 1.0
+epsilon_decay = 0.999 # decay per episode
 eligibility_decay = 0.3
 
-n_states = env.observation_space.n
-n_actions = env.action_space.n
+no_states = env.observation_space.n
+no_actions = env.action_space.n
+Q = np.zeros((no_states, no_actions))
+returns = []
 
-Q = np.zeros((n_states, n_actions))
-
-average_returns = []
 
 for episode in range(episodes):
 
   state = env.reset()
+  epsilon *= epsilon_decay
+
   action = epsilon_greedy(state, Q, epsilon)
 
-  R = [None]
-  E = np.zeros((n_states, n_actions))
+  R = [None] # No first return
+  E = np.zeros((no_states, no_actions))
 
   while True:
 
@@ -58,18 +66,25 @@ for episode in range(episodes):
        break
 
   T = len(R)
-  G = np.zeros(T)
+  G = 0
 
   # t = T-2, T-3, ..., 0
   t = T - 2
 
   while t >= 0:
-    G[t] = R[t+1] + gamma * G[t+1]
+    G = R[t+1] + gamma * G
     t = t - 1
 
-  average_returns.append(np.mean(G))
+  returns.append(G)
 
-plt.plot(np.cumsum(average_returns),linewidth=2)
-plt.xlabel("Numer of episodes")
-plt.ylabel("Cummulative mean reward over each episode")
+
+window_size = 100
+averaged_returns = np.zeros(len(returns)-window_size+1)
+
+for i in range(len(averaged_returns)):
+  averaged_returns[i] = np.mean(returns[i:i+window_size])
+
+plt.plot(averaged_returns, linewidth=2)
+plt.xlabel("Episode")
+plt.ylabel("Moving average of first returns (window_size={})".format(window_size))
 plt.show()
